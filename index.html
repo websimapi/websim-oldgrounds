@@ -1,6 +1,6 @@
 <html><head><base href="." target="_blank">
 <meta charset="UTF-8">
-<title>OldGrounds - The best of Web 1.0</title>
+<title>OldGrounds Forums - The best of Web 1.0</title>
 <style>
   body {
     background: #000000;
@@ -118,6 +118,125 @@
     font-size: 11px;
     color: #666;
   }
+
+  .forum-container {
+    padding: 15px;
+    background: #222;
+  }
+
+  .forum-header {
+    background: #333;
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+
+  .forum-title {
+    color: #ff4400;
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .post-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .forum-post {
+    background: #333;
+    border: 1px solid #444;
+    margin-bottom: 10px;
+    padding: 10px;
+  }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+  }
+
+  .post-avatar {
+    width: 50px;
+    height: 50px;
+    margin-right: 10px;
+    background: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #555;
+  }
+
+  .post-info {
+    flex-grow: 1;
+  }
+
+  .post-author {
+    color: #ff4400;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .post-date {
+    color: #666;
+    font-size: 11px;
+  }
+
+  .post-content {
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .new-post-form {
+    background: #333;
+    padding: 10px;
+    margin-top: 15px;
+  }
+
+  .post-textarea {
+    width: 100%;
+    height: 100px;
+    background: #222;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 5px;
+    margin-bottom: 10px;
+    font-family: Verdana, Arial, sans-serif;
+  }
+
+  .submit-post {
+    background: #ff4400;
+    color: white;
+    padding: 5px 15px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .submit-post:hover {
+    background: #ff6600;
+  }
+
+  .online-users {
+    background: #333;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 12px;
+  }
+
+  .online-users-list {
+    color: #999;
+  }
+
+  .user-tag {
+    background: #444;
+    padding: 2px 5px;
+    margin: 2px;
+    display: inline-block;
+    border-radius: 3px;
+  }
 </style>
 </head>
 <body>
@@ -138,24 +257,25 @@
     </ul>
   </div>
 
-  <div class="news-ticker">
-    <marquee scrollamount="3">
-      LATEST NEWS: New Tank game submission breaks daily record! :: Ultimate Madness 3 wins weekly contest :: Tom Fulp announces new Flash competition :: Server upgrades coming soon :: Welcome to the Portal!
-    </marquee>
-  </div>
-
-  <div class="featured">
-    <div class="game-card">
-      <h4>Madness Combat VI</h4>
-      <div class="rating">★★★★½ 4.5/5.0</div>
-      <div class="author">by Krinkels</div>
-      <button class="play-button">PLAY NOW</button>
+  <div class="forum-container">
+    <div class="online-users">
+      <strong>Online Users:</strong>
+      <div class="online-users-list" id="online-users-list">
+        Loading users...
+      </div>
     </div>
-    <div class="game-card">
-      <h4>Dad n' Me</h4>
-      <div class="rating">★★★★★ 5.0/5.0</div>
-      <div class="author">by TomFulp</div>
-      <button class="play-button">PLAY NOW</button>
+
+    <div class="forum-header">
+      <h2 class="forum-title">General Discussion</h2>
+    </div>
+
+    <ul class="post-list" id="post-list">
+      <!-- Posts will be populated here -->
+    </ul>
+
+    <div class="new-post-form">
+      <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
+      <button class="submit-post" id="submit-post">Post Message</button>
     </div>
   </div>
 
@@ -165,15 +285,97 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const buttons = document.querySelectorAll('.play-button');
-  buttons.forEach(button => {
-    button.addEventListener('click', function() {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodHQgl9ETZ7j+cuKUVKR3PX5xLWpqpWIeoFwZGZ0hYRwWVNWi8bk15dvRUqS2O/nv66qqZyUkZGMhX55fCEhISEhISEhISEhISEhISEhISEhISEhISEh');
-      audio.play();
-    });
+const room = new WebsimSocket();
+let currentUser = null;
+
+room.onmessage = (event) => {
+  const data = event.data;
+  switch (data.type) {
+    case "connected":
+      updateOnlineUsers();
+      break;
+    case "disconnected":
+      updateOnlineUsers();
+      break;
+    case "forum-post":
+      addPostToList(data);
+      break;
+  }
+};
+
+room.onPeersChanged = (peers) => {
+  updateOnlineUsers();
+};
+
+function updateOnlineUsers() {
+  const usersList = document.getElementById('online-users-list');
+  usersList.innerHTML = '';
+  
+  Object.entries(room.party.peers).forEach(([clientId, peer]) => {
+    const userTag = document.createElement('span');
+    userTag.className = 'user-tag';
+    userTag.textContent = peer.username;
+    usersList.appendChild(userTag);
   });
+}
+
+function addPostToList(postData) {
+  const postList = document.getElementById('post-list');
+  const postElement = document.createElement('li');
+  postElement.className = 'forum-post';
+  
+  const timestamp = new Date().toLocaleTimeString();
+  
+  postElement.innerHTML = `
+    <div class="post-header">
+      <div class="post-avatar">
+        <img src="${postData.avatarUrl}" width="50" height="50" alt="User avatar">
+      </div>
+      <div class="post-info">
+        <div class="post-author">${postData.username}</div>
+        <div class="post-date">${timestamp}</div>
+      </div>
+    </div>
+    <div class="post-content">${postData.content}</div>
+  `;
+  
+  postList.appendChild(postElement);
+  postList.scrollTop = postList.scrollHeight;
+}
+
+document.getElementById('submit-post').addEventListener('click', () => {
+  const content = document.getElementById('post-content').value.trim();
+  if (!content) return;
+  
+  room.send({
+    type: 'forum-post',
+    content: content,
+    username: room.party.client.username,
+    avatarUrl: room.party.client.avatarUrl
+  });
+  
+  document.getElementById('post-content').value = '';
 });
+
+// Load existing posts from store
+async function loadExistingPosts() {
+  const posts = await room.store.get('forum-posts') || [];
+  posts.forEach(post => addPostToList(post));
+}
+
+// Save new posts to store
+room.onmessage = async (event) => {
+  const data = event.data;
+  if (data.type === 'forum-post') {
+    await room.store.update({
+      id: 'forum-posts',
+      dependencies: { post: data },
+      updateFunction: (posts = []) => [...posts, post]
+    });
+  }
+};
+
+loadExistingPosts();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body></html>
