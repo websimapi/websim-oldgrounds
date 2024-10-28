@@ -258,18 +258,23 @@
   .section-header {
     padding: 10px;
     display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .section-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .section-content {
+    flex-grow: 1;
+    display: flex;
     justify-content: space-between;
-  }
-
-  .section-title {
-    color: #ff4400;
-    font-weight: bold;
-    font-size: 14px;
-  }
-
-  .section-stats {
-    color: #999;
-    font-size: 11px;
   }
 
   .thread-list {
@@ -287,8 +292,19 @@
 
   .thread-header {
     display: flex;
+    align-items: center;
+  }
+
+  .thread-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+  }
+
+  .thread-content {
+    flex-grow: 1;
+    display: flex;
     justify-content: space-between;
-    margin-bottom: 5px;
   }
 
   .thread-title {
@@ -372,26 +388,46 @@
       <ul class="forum-sections" id="forum-sections">
         <li class="forum-section" onclick="showSection('general')">
           <div class="section-header">
-            <div class="section-title">General Discussion</div>
-            <div class="section-stats">Threads: <span id="general-count">0</span></div>
+            <div class="section-icon">
+              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+            </div>
+            <div class="section-content">
+              <div class="section-title">General Discussion</div>
+              <div class="section-stats">Threads: <span id="general-count">0</span></div>
+            </div>
           </div>
         </li>
         <li class="forum-section" onclick="showSection('games')">
           <div class="section-header">
-            <div class="section-title">Game Development</div>
-            <div class="section-stats">Threads: <span id="games-count">0</span></div>
+            <div class="section-icon">
+              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+            </div>
+            <div class="section-content">
+              <div class="section-title">Game Development</div>
+              <div class="section-stats">Threads: <span id="games-count">0</span></div>
+            </div>
           </div>
         </li>
         <li class="forum-section" onclick="showSection('art')">
           <div class="section-header">
-            <div class="section-title">Art & Animation</div>
-            <div class="section-stats">Threads: <span id="art-count">0</span></div>
+            <div class="section-icon">
+              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+            </div>
+            <div class="section-content">
+              <div class="section-title">Art & Animation</div>
+              <div class="section-stats">Threads: <span id="art-count">0</span></div>
+            </div>
           </div>
         </li>
         <li class="forum-section" onclick="showSection('help')">
           <div class="section-header">
-            <div class="section-title">Help & Support</div>
-            <div class="section-stats">Threads: <span id="help-count">0</span></div>
+            <div class="section-icon">
+              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+            </div>
+            <div class="section-content">
+              <div class="section-title">Help & Support</div>
+              <div class="section-stats">Threads: <span id="help-count">0</span></div>
+            </div>
           </div>
         </li>
       </ul>
@@ -537,9 +573,14 @@ async function loadThreads(sectionId) {
     threadElement.className = 'thread';
     threadElement.innerHTML = `
       <div class="thread-header">
-        <div class="thread-title" onclick="showThread('${thread.id}')">${thread.title}</div>
-        <div class="thread-meta">
-          by ${thread.author} | ${thread.timestamp}
+        <div class="thread-icon">
+          <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Thread icon" width="24" height="24">
+        </div>
+        <div class="thread-content">
+          <div class="thread-title" onclick="showThread('${thread.id}')">${thread.title}</div>
+          <div class="thread-meta">
+            by ${thread.author} | ${thread.timestamp}
+          </div>
         </div>
       </div>
     `;
