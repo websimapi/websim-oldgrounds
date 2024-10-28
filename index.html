@@ -237,6 +237,105 @@
     display: inline-block;
     border-radius: 3px;
   }
+
+  .forum-sections {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 15px 0;
+  }
+
+  .forum-section {
+    background: #333;
+    border: 1px solid #444;
+    margin-bottom: 5px;
+    cursor: pointer;
+  }
+
+  .forum-section:hover {
+    background: #444;
+  }
+
+  .section-header {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .section-title {
+    color: #ff4400;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .section-stats {
+    color: #999;
+    font-size: 11px;
+  }
+
+  .thread-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .thread {
+    background: #333;
+    border: 1px solid #444;
+    margin-bottom: 5px;
+    padding: 10px;
+  }
+
+  .thread-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .thread-title {
+    color: #ff4400;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .thread-title:hover {
+    text-decoration: underline;
+  }
+
+  .thread-meta {
+    color: #999;
+    font-size: 11px;
+  }
+
+  .new-thread-form {
+    background: #333;
+    padding: 10px;
+    margin-bottom: 15px;
+    display: none;
+  }
+
+  .thread-title-input {
+    width: 100%;
+    background: #222;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 5px;
+    margin-bottom: 10px;
+    font-family: Verdana, Arial, sans-serif;
+  }
+
+  .back-button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+
+  .back-button:hover {
+    background: #444;
+  }
 </style>
 </head>
 <body>
@@ -265,17 +364,72 @@
       </div>
     </div>
 
-    <div class="forum-header">
-      <h2 class="forum-title">General Discussion</h2>
+    <div id="forum-view">
+      <div class="forum-header">
+        <h2 class="forum-title">Forum Sections</h2>
+      </div>
+      
+      <ul class="forum-sections" id="forum-sections">
+        <li class="forum-section" onclick="showSection('general')">
+          <div class="section-header">
+            <div class="section-title">General Discussion</div>
+            <div class="section-stats">Threads: <span id="general-count">0</span></div>
+          </div>
+        </li>
+        <li class="forum-section" onclick="showSection('games')">
+          <div class="section-header">
+            <div class="section-title">Game Development</div>
+            <div class="section-stats">Threads: <span id="games-count">0</span></div>
+          </div>
+        </li>
+        <li class="forum-section" onclick="showSection('art')">
+          <div class="section-header">
+            <div class="section-title">Art & Animation</div>
+            <div class="section-stats">Threads: <span id="art-count">0</span></div>
+          </div>
+        </li>
+        <li class="forum-section" onclick="showSection('help')">
+          <div class="section-header">
+            <div class="section-title">Help & Support</div>
+            <div class="section-stats">Threads: <span id="help-count">0</span></div>
+          </div>
+        </li>
+      </ul>
     </div>
 
-    <ul class="post-list" id="post-list">
-      <!-- Posts will be populated here -->
-    </ul>
+    <div id="section-view" style="display: none;">
+      <button class="back-button" onclick="showForumSections()">← Back to Sections</button>
+      
+      <div class="forum-header">
+        <h2 class="forum-title" id="section-title">Section</h2>
+      </div>
 
-    <div class="new-post-form">
-      <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
-      <button class="submit-post" id="submit-post">Post Message</button>
+      <button class="submit-post" onclick="toggleNewThreadForm()">New Thread</button>
+      
+      <div class="new-thread-form" id="new-thread-form">
+        <input type="text" class="thread-title-input" id="thread-title" placeholder="Thread Title">
+        <textarea class="post-textarea" id="thread-content" placeholder="Thread Content"></textarea>
+        <button class="submit-post" onclick="createNewThread()">Create Thread</button>
+      </div>
+
+      <ul class="thread-list" id="thread-list"></ul>
+    </div>
+
+    <div id="thread-view" style="display: none;">
+      <button class="back-button" id="thread-back-button">← Back to Threads</button>
+      
+      <div class="forum-header">
+        <h2 class="forum-title" id="thread-title-header">Thread</h2>
+      </div>
+
+      <ul class="post-list" id="post-list">
+        <!-- Posts will be populated here -->
+      </ul>
+
+      <div class="new-post-form">
+        <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
+        <button class="submit-post" id="submit-post">Post Reply</button>
+      </div>
     </div>
   </div>
 
@@ -286,10 +440,174 @@
 
 <script>
 const room = new WebsimSocket();
+let currentSection = '';
+let currentThread = '';
 
-function switchSection(section) {
-  console.log(`Switching to ${section} section`);
-  // Future section handling
+function showSection(sectionId) {
+  currentSection = sectionId;
+  document.getElementById('forum-view').style.display = 'none';
+  document.getElementById('section-view').style.display = 'block';
+  document.getElementById('thread-view').style.display = 'none';
+  document.getElementById('section-title').textContent = getSectionTitle(sectionId);
+  loadThreads(sectionId);
+}
+
+function showForumSections() {
+  currentSection = '';
+  document.getElementById('forum-view').style.display = 'block';
+  document.getElementById('section-view').style.display = 'none';
+  document.getElementById('thread-view').style.display = 'none';
+  updateThreadCounts();
+}
+
+function showThread(threadId) {
+  currentThread = threadId;
+  document.getElementById('forum-view').style.display = 'none';
+  document.getElementById('section-view').style.display = 'none';
+  document.getElementById('thread-view').style.display = 'block';
+  loadThreadPosts(threadId);
+}
+
+function getSectionTitle(sectionId) {
+  const titles = {
+    'general': 'General Discussion',
+    'games': 'Game Development',
+    'art': 'Art & Animation',
+    'help': 'Help & Support'
+  };
+  return titles[sectionId] || 'Unknown Section';
+}
+
+function toggleNewThreadForm() {
+  const form = document.getElementById('new-thread-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function createNewThread() {
+  const title = document.getElementById('thread-title').value.trim();
+  const content = document.getElementById('thread-content').value.trim();
+  
+  if (!title || !content) return;
+
+  const threadId = `${currentSection}-${Date.now()}`;
+  const threadData = {
+    id: threadId,
+    title: title,
+    section: currentSection,
+    author: room.party.client.username,
+    avatarUrl: room.party.client.avatarUrl,
+    timestamp: new Date().toLocaleString(),
+    lastPost: new Date().toLocaleString()
+  };
+
+  await room.store.update({
+    id: `threads-${currentSection}`,
+    dependencies: { threadData },
+    updateFunction: (threads = []) => [...threads, threadData]
+  });
+
+  const postData = {
+    type: 'thread-post',
+    threadId: threadId,
+    content: content,
+    username: room.party.client.username,
+    avatarUrl: room.party.client.avatarUrl,
+    timestamp: new Date().toLocaleString()
+  };
+
+  await savePost(postData);
+
+  document.getElementById('thread-title').value = '';
+  document.getElementById('thread-content').value = '';
+  toggleNewThreadForm();
+  loadThreads(currentSection);
+  updateThreadCounts();
+}
+
+async function loadThreads(sectionId) {
+  const threadList = document.getElementById('thread-list');
+  threadList.innerHTML = '';
+  
+  const threads = await room.store.get(`threads-${sectionId}`) || [];
+  
+  threads.sort((a, b) => new Date(b.lastPost) - new Date(a.lastPost));
+  
+  threads.forEach(thread => {
+    const threadElement = document.createElement('li');
+    threadElement.className = 'thread';
+    threadElement.innerHTML = `
+      <div class="thread-header">
+        <div class="thread-title" onclick="showThread('${thread.id}')">${thread.title}</div>
+        <div class="thread-meta">
+          by ${thread.author} | ${thread.timestamp}
+        </div>
+      </div>
+    `;
+    threadList.appendChild(threadElement);
+  });
+}
+
+async function updateThreadCounts() {
+  const sections = ['general', 'games', 'art', 'help'];
+  for (const section of sections) {
+    const threads = await room.store.get(`threads-${section}`) || [];
+    document.getElementById(`${section}-count`).textContent = threads.length;
+  }
+}
+
+async function loadThreadPosts(threadId) {
+  const threads = await room.store.get(`threads-${currentSection}`) || [];
+  const thread = threads.find(t => t.id === threadId);
+  
+  if (thread) {
+    document.getElementById('thread-title-header').textContent = thread.title;
+  }
+
+  const posts = await room.store.get(`posts-${threadId}`) || [];
+  const postList = document.getElementById('post-list');
+  postList.innerHTML = '';
+  
+  posts.forEach(post => addPostToList(post));
+
+  document.getElementById('thread-back-button').onclick = () => showSection(currentSection);
+}
+
+document.getElementById('submit-post').addEventListener('click', async () => {
+  const content = document.getElementById('post-content').value.trim();
+  if (!content || !currentThread) return;
+  
+  const postData = {
+    type: 'thread-post',
+    threadId: currentThread,
+    content: content,
+    username: room.party.client.username,
+    avatarUrl: room.party.client.avatarUrl,
+    timestamp: new Date().toLocaleString()
+  };
+  
+  await room.store.update({
+    id: `threads-${currentSection}`,
+    dependencies: { currentThread },
+    updateFunction: (threads = []) => {
+      return threads.map(thread => {
+        if (thread.id === currentThread) {
+          return { ...thread, lastPost: new Date().toLocaleString() };
+        }
+        return thread;
+      });
+    }
+  });
+
+  room.send(postData);
+  document.getElementById('post-content').value = '';
+});
+
+async function savePost(postData) {
+  await room.store.update({
+    id: `posts-${postData.threadId}`,
+    dependencies: { postData },
+    updateFunction: (posts = []) => [...posts, postData]
+  });
 }
 
 room.onmessage = (event) => {
@@ -299,15 +617,12 @@ room.onmessage = (event) => {
     case "disconnected":
       updateOnlineUsers();
       break;
-    case "forum-post":
-      addPostToList(data);
-      savePost(data);
+    case "thread-post":
+      if (data.threadId === currentThread) {
+        addPostToList(data);
+      }
       break;
   }
-};
-
-room.onPeersChanged = (peers) => {
-  updateOnlineUsers();
 };
 
 function updateOnlineUsers() {
@@ -344,35 +659,6 @@ function addPostToList(postData) {
   postList.scrollTop = postList.scrollHeight;
 }
 
-async function savePost(postData) {
-  const post = {
-    ...postData,
-    timestamp: new Date().toLocaleString()
-  };
-
-  await room.store.update({
-    id: 'forum-posts',
-    dependencies: { post },
-    updateFunction: (posts = []) => [...posts, post]
-  });
-}
-
-document.getElementById('submit-post').addEventListener('click', () => {
-  const content = document.getElementById('post-content').value.trim();
-  if (!content) return;
-  
-  const postData = {
-    type: 'forum-post',
-    content: content,
-    username: room.party.client.username,
-    avatarUrl: room.party.client.avatarUrl,
-    timestamp: new Date().toLocaleString()
-  };
-  
-  room.send(postData);
-  document.getElementById('post-content').value = '';
-});
-
 async function loadExistingPosts() {
   try {
     const posts = await room.store.get('forum-posts') || [];
@@ -383,7 +669,7 @@ async function loadExistingPosts() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadExistingPosts();
+  showForumSections();
 });
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
