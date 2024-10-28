@@ -231,11 +231,15 @@
   }
 
   .user-tag {
-    background: #444;
-    padding: 2px 5px;
-    margin: 2px;
-    display: inline-block;
-    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .user-avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
   }
 
   .forum-sections {
@@ -744,7 +748,7 @@ function addPostToList(post) {
   postElement.innerHTML = `
     <div class="post-header">
       <div class="post-avatar">
-        <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="User avatar" width="50" height="50">
+        <img src="${post.avatarUrl}" alt="User avatar" width="50" height="50">
       </div>
       <div class="post-info">
         <div class="post-author">${post.username}</div>
@@ -809,8 +813,12 @@ function updateOnlineUsers() {
   usersList.innerHTML = onlineCount === 0 ? 
     '<span class="user-tag">No users online</span>' : 
     Object.entries(users)
-      .map(([clientId, peer]) => `<span class="user-tag">${peer.username}</span>`)
-      .join(' ');
+      .map(([clientId, peer]) => `
+        <span class="user-tag">
+          <img src="${peer.avatarUrl}" alt="User avatar" class="user-avatar" width="16" height="16">
+          ${peer.username}
+        </span>
+      `).join(' ');
 }
 
 room.onmessage = (event) => {
