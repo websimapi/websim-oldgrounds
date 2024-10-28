@@ -453,24 +453,72 @@ const room = new WebsimSocket();
 let currentSection = '';
 let currentThread = '';
 
+function cleanupOldStates(states) {
+  const ONE_MONTH = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+  const now = new Date().getTime();
+  
+  for (const sectionId in states.sections) {
+    const date = new Date(states.sections[sectionId]).getTime();
+    if (now - date > ONE_MONTH) {
+      delete states.sections[sectionId];
+    }
+  }
+  
+  for (const threadId in states.threads) {
+    const date = new Date(states.threads[threadId]).getTime();
+    if (now - date > ONE_MONTH) {
+      delete states.threads[threadId];
+    }
+  }
+  
+  return states;
+}
+
 function getSeenStates() {
-  const seenStates = localStorage.getItem('oldgrounds-seen-states');
-  return seenStates ? JSON.parse(seenStates) : {
-    sections: {},
-    threads: {}
-  };
+  try {
+    const seenStates = localStorage.getItem('oldgrounds-seen-states');
+    if (!seenStates) {
+      return {
+        sections: {},
+        threads: {}
+      };
+    }
+    return cleanupOldStates(JSON.parse(seenStates));
+  } catch (e) {
+    console.warn('Error reading seen states:', e);
+    return {
+      sections: {},
+      threads: {}
+    };
+  }
+}
+
+function saveSeenStates(states) {
+  try {
+    localStorage.setItem('oldgrounds-seen-states', JSON.stringify(states));
+  } catch (e) {
+    console.warn('Error saving seen states:', e);
+    if (e.name === 'QuotaExceededError') {
+      const cleanStates = cleanupOldStates(states);
+      try {
+        localStorage.setItem('oldgrounds-seen-states', JSON.stringify(cleanStates));
+      } catch (retryError) {
+        console.error('Failed to save even after cleanup:', retryError);
+      }
+    }
+  }
 }
 
 function markSectionSeen(sectionId) {
   const states = getSeenStates();
   states.sections[sectionId] = new Date().toISOString();
-  localStorage.setItem('oldgrounds-seen-states', JSON.stringify(states));
+  saveSeenStates(states);
 }
 
 function markThreadSeen(threadId) {
   const states = getSeenStates();
   states.threads[threadId] = new Date().toISOString();
-  localStorage.setItem('oldgrounds-seen-states', JSON.stringify(states));
+  saveSeenStates(states);
 }
 
 function isSectionSeen(sectionId, lastPostDate) {
