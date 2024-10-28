@@ -582,24 +582,49 @@ let currentSection = '';
 let currentThread = '';
 
 function cleanupOldStates(states) {
-  const ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
+  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000; 
   const now = new Date().getTime();
   
-  for (const sectionId in states.sections) {
-    const date = new Date(states.sections[sectionId]).getTime();
-    if (now - date > ONE_MONTH) {
-      delete states.sections[sectionId];
+  let cleanStates = JSON.parse(JSON.stringify(states));
+
+  for (const sectionId in cleanStates.sections) {
+    const date = new Date(cleanStates.sections[sectionId]).getTime();
+    if (now - date > ONE_WEEK) {
+      delete cleanStates.sections[sectionId];
     }
   }
   
-  for (const threadId in states.threads) {
-    const date = new Date(states.threads[threadId]).getTime();
-    if (now - date > ONE_MONTH) {
-      delete states.threads[threadId];
+  for (const threadId in cleanStates.threads) {
+    const date = new Date(cleanStates.threads[threadId]).getTime();
+    if (now - date > ONE_WEEK) {
+      delete cleanStates.threads[threadId];
+    }
+  }
+
+  while (JSON.stringify(cleanStates).length > 4500000) {
+    let oldestTime = Infinity;
+    let oldestKey = null;
+    let oldestType = null;
+
+    for (const [type, items] of Object.entries(cleanStates)) {
+      for (const [key, timestamp] of Object.entries(items)) {
+        const date = new Date(timestamp).getTime();
+        if (date < oldestTime) {
+          oldestTime = date;
+          oldestKey = key;
+          oldestType = type;
+        }
+      }
+    }
+
+    if (oldestKey && oldestType) {
+      delete cleanStates[oldestType][oldestKey];
+    } else {
+      break;
     }
   }
   
-  return states;
+  return cleanStates;
 }
 
 function getSeenStates() {
@@ -974,6 +999,42 @@ async function deletePost(threadId, timestamp) {
   
   loadThreadPosts(threadId);
 }
+
+document.getElementById('submit-post').addEventListener('click', async () => {
+  const content = document.getElementById('post-content').value.trim();
+  if (!content) return;
+
+  const postData = {
+    type: 'thread-post',
+    threadId: currentThread,
+    content: content,
+    username: room.party.client.username,
+    avatarUrl: room.party.client.avatarUrl,
+    timestamp: new Date().toLocaleString()
+  };
+
+  room.send(postData);
+
+  await savePost(postData);
+  
+  await room.store.update({
+    id: `threads-${currentSection}`,
+    dependencies: { threadId: currentThread },
+    updateFunction: (threads = []) => {
+      return threads.map(t => {
+        if (t.id === threadId) {
+          return { ...t, lastPost: new Date().toLocaleString() };
+        }
+        return t;
+      });
+    }
+  });
+
+  document.getElementById('post-content').value = '';
+  
+  addPostToList(postData);
+  updateThreadCounts();
+});
 
 function insertFormat(prefix, suffix) {
   const textarea = document.getElementById('post-content');
