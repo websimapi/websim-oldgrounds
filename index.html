@@ -549,7 +549,7 @@ let currentSection = '';
 let currentThread = '';
 
 function cleanupOldStates(states) {
-  const ONE_MONTH = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+  const ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
   const now = new Date().getTime();
   
   for (const sectionId in states.sections) {
@@ -922,9 +922,23 @@ document.getElementById('submit-post').addEventListener('click', async () => {
     }
   });
 
+  await savePost(postData);
   room.send(postData);
+  
   document.getElementById('post-content').value = '';
+  
+  await loadThreadPosts(currentThread);
+  updateThreadCounts();
 });
+
+room.onmessage = async (event) => {
+  const data = event.data;
+  if (data.type === "thread-post" && data.threadId === currentThread) {
+    await savePost(data);
+    addPostToList(data);
+    updateThreadCounts();
+  }
+};
 
 async function savePost(postData) {
   await room.store.update({
