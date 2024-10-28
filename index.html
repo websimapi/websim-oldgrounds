@@ -255,6 +255,11 @@
     background: #444;
   }
 
+  .forum-section.seen .section-icon img,
+  .thread.seen .thread-icon img {
+    opacity: 0.5;
+  }
+
   .section-header {
     padding: 10px;
     display: flex;
@@ -448,6 +453,38 @@ const room = new WebsimSocket();
 let currentSection = '';
 let currentThread = '';
 
+function getSeenStates() {
+  const seenStates = localStorage.getItem('oldgrounds-seen-states');
+  return seenStates ? JSON.parse(seenStates) : {
+    sections: {},
+    threads: {}
+  };
+}
+
+function markSectionSeen(sectionId) {
+  const states = getSeenStates();
+  states.sections[sectionId] = new Date().toISOString();
+  localStorage.setItem('oldgrounds-seen-states', JSON.stringify(states));
+}
+
+function markThreadSeen(threadId) {
+  const states = getSeenStates();
+  states.threads[threadId] = new Date().toISOString();
+  localStorage.setItem('oldgrounds-seen-states', JSON.stringify(states));
+}
+
+function isSectionSeen(sectionId, lastPostDate) {
+  const states = getSeenStates();
+  const seenDate = states.sections[sectionId];
+  return seenDate && new Date(seenDate) >= new Date(lastPostDate);
+}
+
+function isThreadSeen(threadId, lastPostDate) {
+  const states = getSeenStates();
+  const seenDate = states.threads[threadId];
+  return seenDate && new Date(seenDate) >= new Date(lastPostDate);
+}
+
 function updateForumSections() {
   const sectionsData = {
     general: {
@@ -469,28 +506,33 @@ function updateForumSections() {
   };
 
   const sectionsList = document.getElementById('forum-sections');
-  sectionsList.innerHTML = Object.entries(sectionsData).map(([id, data]) => `
-    <li class="forum-section" onclick="showSection('${id}')">
-      <div class="section-header">
-        <div class="section-icon">
-          <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
-        </div>
-        <div class="section-content">
-          <div class="section-title">${data.title}</div>
-          <div class="section-description">${data.description}</div>
-          <div class="section-stats">
-            <span>Topics: <span id="${id}-count">0</span></span>
-            <span>Replies: <span id="${id}-replies">0</span></span>
-            <span>Last Post: <span id="${id}-lastpost">Never</span></span>
+  sectionsList.innerHTML = Object.entries(sectionsData).map(([id, data]) => {
+    const lastPost = document.getElementById(`${id}-lastpost`)?.textContent || 'Never';
+    const seen = isSectionSeen(id, lastPost);
+    return `
+      <li class="forum-section ${seen ? 'seen' : ''}" onclick="showSection('${id}')">
+        <div class="section-header">
+          <div class="section-icon">
+            <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+          </div>
+          <div class="section-content">
+            <div class="section-title">${data.title}</div>
+            <div class="section-description">${data.description}</div>
+            <div class="section-stats">
+              <span>Topics: <span id="${id}-count">0</span></span>
+              <span>Replies: <span id="${id}-replies">0</span></span>
+              <span>Last Post: <span id="${id}-lastpost">Never</span></span>
+            </div>
           </div>
         </div>
-      </div>
-    </li>
-  `).join('');
+      </li>
+    `;
+  }).join('');
 }
 
 function showSection(sectionId) {
   currentSection = sectionId;
+  markSectionSeen(sectionId);
   document.getElementById('forum-view').style.display = 'none';
   document.getElementById('section-view').style.display = 'block';
   document.getElementById('thread-view').style.display = 'none';
@@ -508,6 +550,7 @@ function showForumSections() {
 
 function showThread(threadId) {
   currentThread = threadId;
+  markThreadSeen(threadId);
   document.getElementById('forum-view').style.display = 'none';
   document.getElementById('section-view').style.display = 'none';
   document.getElementById('thread-view').style.display = 'block';
@@ -579,8 +622,9 @@ async function loadThreads(sectionId) {
   threads.sort((a, b) => new Date(b.lastPost) - new Date(a.lastPost));
   
   threads.forEach(thread => {
+    const seen = isThreadSeen(thread.id, thread.lastPost);
     const threadElement = document.createElement('li');
-    threadElement.className = 'thread';
+    threadElement.className = `thread ${seen ? 'seen' : ''}`;
     threadElement.innerHTML = `
       <div class="thread-header">
         <div class="thread-icon">
