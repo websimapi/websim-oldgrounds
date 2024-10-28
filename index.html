@@ -189,6 +189,38 @@
     line-height: 1.4;
   }
 
+  .post-content {
+    word-wrap: break-word;
+  }
+
+  .post-content blockquote {
+    border-left: 3px solid #ff4400;
+    margin: 10px 0;
+    padding: 5px 10px;
+    background: #2a2a2a;
+  }
+
+  .post-content code {
+    background: #2a2a2a;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+
+  .post-content h2, .post-content h3, .post-content h4 {
+    color: #ff4400;
+    margin: 10px 0;
+  }
+
+  .post-content a {
+    color: #ff4400;
+    text-decoration: none;
+  }
+
+  .post-content a:hover {
+    text-decoration: underline;
+  }
+
   .new-post-form {
     background: #333;
     padding: 10px;
@@ -374,6 +406,27 @@
   .back-button:hover {
     background: #444;
   }
+
+  .formatting-help {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    margin: 10px 0;
+    padding: 10px;
+  }
+
+  .formatting-help summary {
+    cursor: pointer;
+    color: #ff4400;
+  }
+
+  .formatting-guide {
+    font-size: 12px;
+    padding: 10px 0 0 0;
+  }
+
+  .formatting-guide p {
+    margin: 5px 0;
+  }
 </style>
 </head>
 <body>
@@ -434,6 +487,23 @@
       
       <div class="forum-header">
         <h2 class="forum-title" id="thread-title-header">Thread</h2>
+      </div>
+
+      <div class="formatting-help">
+        <details>
+          <summary>Formatting Help</summary>
+          <div class="formatting-guide">
+            <p>**bold text** = <strong>bold text</strong></p>
+            <p>*italic text* = <em>italic text</em></p>
+            <p>\`code\` = <code>code</code></p>
+            <p>> quote = blockquote</p>
+            <p># Header 1</p>
+            <p>## Header 2</p>
+            <p>### Header 3</p>
+            <p>!image(URL) = embed image</p>
+            <p>URLs are automatically converted to links</p>
+          </div>
+        </details>
       </div>
 
       <ul class="post-list" id="post-list">
@@ -535,6 +605,29 @@ function isThreadSeen(threadId, lastPostDate) {
   const states = getSeenStates();
   const seenDate = states.threads[threadId];
   return seenDate && new Date(seenDate) >= new Date(lastPostDate);
+}
+
+function formatPostContent(content) {
+  content = content.replace(
+    /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g, 
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+  
+  content = content.replace(
+    /!image\((https?:\/\/[^\s<]+\.(?:jpg|jpeg|gif|png))\)/gi,
+    '<img src="$1" alt="User posted image" style="max-width:100%;height:auto;">'
+  );
+  
+  content = content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/^> (.+)/gm, '<blockquote>$1</blockquote>')
+    .replace(/^### (.+)/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)/gm, '<h2>$1</h2>');
+
+  return content;
 }
 
 function updateForumSections() {
@@ -755,7 +848,7 @@ function addPostToList(post) {
         <div class="post-date">${post.timestamp}</div>
       </div>
     </div>
-    <div class="post-content">${post.content}</div>
+    <div class="post-content">${formatPostContent(post.content)}</div>
   `;
   postList.appendChild(postElement);
 }
