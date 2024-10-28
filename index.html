@@ -1,4 +1,4 @@
-<html><head><base href=".">
+<!DOCTYPE html><html><head><base href=".">
 <meta charset="UTF-8">
 <title>OldGrounds Forums - The best of Web 1.0</title>
 <style>
@@ -487,19 +487,6 @@
   .post-edit-btn:hover, .post-delete-btn:hover {
     background: #ff6600;
   }
-
-  .edit-post-form {
-    background: #2a2a2a;
-    padding: 10px;
-    border: 1px solid #444;
-    margin: 10px 0;
-  }
-
-  .edit-controls {
-    display: flex;
-    gap: 5px;
-    margin-top: 10px;
-  }
 </style>
 </head>
 <body>
@@ -556,31 +543,31 @@
     </div>
 
     <div id="thread-view" style="display: none;">
-      <button class="back-button" id="thread-back-button">← Back to Threads</button>
-      
-      <div class="forum-header">
-        <h2 class="forum-title" id="thread-title-header">Thread</h2>
-      </div>
+  <button class="back-button" id="thread-back-button">← Back to Threads</button>
+  
+  <div class="forum-header">
+    <h2 class="forum-title" id="thread-title-header">Thread</h2>
+  </div>
 
-      <div class="new-post-form">
-        <div class="formatting-toolbar">
-          <button class="format-btn" onclick="insertFormat('**', '**')">Bold</button>
-          <button class="format-btn" onclick="insertFormat('*', '*')">Italic</button>
-          <button class="format-btn" onclick="insertFormat('`', '`')">Code</button>
-          <button class="format-btn" onclick="insertFormat('> ', '')">Quote</button>
-          <button class="format-btn" onclick="insertFormat('# ', '')">H1</button>
-          <button class="format-btn" onclick="insertFormat('## ', '')">H2</button>
-          <button class="format-btn" onclick="insertFormat('### ', '')">H3</button>
-          <button class="format-btn" onclick="insertFormat('!image(', ')')">Image</button>
-        </div>
-        <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
-        <button class="submit-post" id="submit-post">Post Reply</button>
-      </div>
+  <ul class="post-list" id="post-list">
+    <!-- Posts will be populated here -->
+  </ul>
 
-      <ul class="post-list" id="post-list">
-        <!-- Posts will be populated here -->
-      </ul>
+  <div class="new-post-form">
+    <div class="formatting-toolbar">
+      <button class="format-btn" onclick="insertFormat('**', '**')">Bold</button>
+      <button class="format-btn" onclick="insertFormat('*', '*')">Italic</button>
+      <button class="format-btn" onclick="insertFormat('`', '`')">Code</button>
+      <button class="format-btn" onclick="insertFormat('> ', '')">Quote</button>
+      <button class="format-btn" onclick="insertFormat('# ', '')">H1</button>
+      <button class="format-btn" onclick="insertFormat('## ', '')">H2</button>
+      <button class="format-btn" onclick="insertFormat('### ', '')">H3</button>
+      <button class="format-btn" onclick="insertFormat('!image(', ')')">Image</button>
     </div>
+    <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
+    <button class="submit-post" id="submit-post">Post Reply</button>
+  </div>
+</div>
   </div>
 
   <div class="footer">
@@ -980,32 +967,30 @@ async function editPost(threadId, timestamp) {
   const contentDiv = document.getElementById(`post-content-${timestamp}`);
   const posts = await room.store.get(`posts-${threadId}`);
   const post = posts.find(p => p.timestamp === timestamp);
-  if (!post) return;
+  if (!post || !contentDiv) return;
 
-  const originalContent = contentDiv.innerHTML;
+  const originalContent = post.content;
   contentDiv.innerHTML = `
-    <div class="edit-post-form">
+    <div class="new-post-form">
       <div class="formatting-toolbar">
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '**', '**')">Bold</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '*', '*')">Italic</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '`', '`')">Code</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '> ', '')">Quote</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '# ', '')">H1</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '## ', '')">H2</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '### ', '')">H3</button>
-        <button class="format-btn" onclick="insertEditFormat('edit-textarea-${timestamp}', '!image(', ')')">Image</button>
+        <button class="format-btn" onclick="insertFormatEdit('**', '**', '${timestamp.replace(/'/g, "\\'")}')">Bold</button>
+        <button class="format-btn" onclick="insertFormatEdit('*', '*', '${timestamp.replace(/'/g, "\\'")}')">Italic</button>
+        <button class="format-btn" onclick="insertFormatEdit('\`', '\`', '${timestamp.replace(/'/g, "\\'")}')">Code</button>
+        <button class="format-btn" onclick="insertFormatEdit('> ', '', '${timestamp.replace(/'/g, "\\'")}')">Quote</button>
+        <button class="format-btn" onclick="insertFormatEdit('# ', '', '${timestamp.replace(/'/g, "\\'")}')">H1</button>
+        <button class="format-btn" onclick="insertFormatEdit('## ', '', '${timestamp.replace(/'/g, "\\'")}')">H2</button>
+        <button class="format-btn" onclick="insertFormatEdit('### ', '', '${timestamp.replace(/'/g, "\\'")}')">H3</button>
+        <button class="format-btn" onclick="insertFormatEdit('!image(', ')', '${timestamp.replace(/'/g, "\\'")}')">Image</button>
       </div>
-      <textarea id="edit-textarea-${timestamp}" class="post-textarea">${post.content}</textarea>
-      <div class="edit-controls">
-        <button class="submit-post" onclick="saveEdit('${threadId}', '${timestamp}')">Save</button>
-        <button class="post-delete-btn" onclick="cancelEdit('${timestamp}', '${originalContent}')">Cancel</button>
-      </div>
+      <textarea class="post-textarea" id="edit-textarea-${timestamp}">${originalContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+      <button class="submit-post" onclick="saveEdit('${threadId.replace(/'/g, "\\'")}', '${timestamp.replace(/'/g, "\\'")}')">Save</button>
+      <button class="post-delete-btn" onclick="cancelEdit('${threadId.replace(/'/g, "\\'")}', '${timestamp.replace(/'/g, "\\'")}')">Cancel</button>
     </div>
   `;
 }
 
-function insertEditFormat(textareaId, prefix, suffix) {
-  const textarea = document.getElementById(textareaId);
+function insertFormatEdit(prefix, suffix, timestamp) {
+  const textarea = document.getElementById(`edit-textarea-${timestamp}`);
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
   const text = textarea.value;
@@ -1020,7 +1005,7 @@ function insertEditFormat(textareaId, prefix, suffix) {
 }
 
 async function saveEdit(threadId, timestamp) {
-  const content = document.getElementById(`edit-textarea-${timestamp}`).value;
+  const content = document.getElementById(`edit-textarea-${timestamp}`).value.trim();
   if (!content) return;
 
   await room.store.update({
@@ -1039,9 +1024,25 @@ async function saveEdit(threadId, timestamp) {
   loadThreadPosts(threadId);
 }
 
-function cancelEdit(timestamp, originalContent) {
+async function cancelEdit(threadId, timestamp) {
+  const posts = await room.store.get(`posts-${threadId}`);
+  const post = posts.find(p => p.timestamp === timestamp);
+  if (!post) return;
+  
   const contentDiv = document.getElementById(`post-content-${timestamp}`);
-  contentDiv.innerHTML = originalContent;
+  contentDiv.innerHTML = formatPostContent(post.content);
+}
+
+async function deletePost(threadId, timestamp) {
+  if (!confirm('Are you sure you want to delete this post?')) return;
+
+  await room.store.update({
+    id: `posts-${threadId}`,
+    dependencies: { timestamp },
+    updateFunction: (posts = []) => posts.filter(p => p.timestamp !== timestamp)
+  });
+  
+  loadThreadPosts(threadId);
 }
 
 document.getElementById('submit-post').addEventListener('click', async () => {
@@ -1057,12 +1058,23 @@ document.getElementById('submit-post').addEventListener('click', async () => {
     timestamp: new Date().toLocaleString()
   };
 
-  room.send(postData);
-  
   await savePost(postData);
   
+  await room.store.update({
+    id: `threads-${currentSection}`,
+    dependencies: { threadId: currentThread },
+    updateFunction: (threads = []) => {
+      return threads.map(t => {
+        if (t.id === threadId) {
+          return { ...t, lastPost: new Date().toLocaleString() };
+        }
+        return t;
+      });
+    }
+  });
+
   document.getElementById('post-content').value = '';
-  updateThreadCounts();
+  loadThreadPosts(currentThread);
 });
 
 function startOnlineUsersInterval() {
