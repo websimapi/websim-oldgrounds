@@ -549,25 +549,24 @@
         <h2 class="forum-title" id="thread-title-header">Thread</h2>
       </div>
 
-      <div class="formatting-toolbar">
-        <button class="format-btn" onclick="insertFormat('**', '**')">Bold</button>
-        <button class="format-btn" onclick="insertFormat('*', '*')">Italic</button>
-        <button class="format-btn" onclick="insertFormat('`', '`')">Code</button>
-        <button class="format-btn" onclick="insertFormat('> ', '')">Quote</button>
-        <button class="format-btn" onclick="insertFormat('# ', '')">H1</button>
-        <button class="format-btn" onclick="insertFormat('## ', '')">H2</button>
-        <button class="format-btn" onclick="insertFormat('### ', '')">H3</button>
-        <button class="format-btn" onclick="insertFormat('!image(', ')')">Image</button>
+      <div class="new-post-form">
+        <div class="formatting-toolbar">
+          <button class="format-btn" onclick="insertFormat('**', '**')">Bold</button>
+          <button class="format-btn" onclick="insertFormat('*', '*')">Italic</button>
+          <button class="format-btn" onclick="insertFormat('`', '`')">Code</button>
+          <button class="format-btn" onclick="insertFormat('> ', '')">Quote</button>
+          <button class="format-btn" onclick="insertFormat('# ', '')">H1</button>
+          <button class="format-btn" onclick="insertFormat('## ', '')">H2</button>
+          <button class="format-btn" onclick="insertFormat('### ', '')">H3</button>
+          <button class="format-btn" onclick="insertFormat('!image(', ')')">Image</button>
+        </div>
+        <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
+        <button class="submit-post" id="submit-post">Post Reply</button>
       </div>
 
       <ul class="post-list" id="post-list">
         <!-- Posts will be populated here -->
       </ul>
-
-      <div class="new-post-form">
-        <textarea class="post-textarea" id="post-content" placeholder="What's on your mind?"></textarea>
-        <button class="submit-post" id="submit-post">Post Reply</button>
-      </div>
     </div>
   </div>
 
@@ -965,11 +964,48 @@ function addPostToList(post) {
 }
 
 async function editPost(threadId, timestamp) {
+  const contentDiv = document.getElementById(`post-content-${timestamp}`);
   const posts = await room.store.get(`posts-${threadId}`);
   const post = posts.find(p => p.timestamp === timestamp);
-  if (!post) return;
+  if (!post || !contentDiv) return;
 
-  const content = prompt('Edit your post:', post.content);
+  const originalContent = post.content;
+  contentDiv.innerHTML = `
+    <div class="new-post-form">
+      <div class="formatting-toolbar">
+        <button class="format-btn" onclick="insertFormatEdit('**', '**', '${timestamp}')">Bold</button>
+        <button class="format-btn" onclick="insertFormatEdit('*', '*', '${timestamp}')">Italic</button>
+        <button class="format-btn" onclick="insertFormatEdit('`', '`', '${timestamp}')">Code</button>
+        <button class="format-btn" onclick="insertFormatEdit('> ', '', '${timestamp}')">Quote</button>
+        <button class="format-btn" onclick="insertFormatEdit('# ', '', '${timestamp}')">H1</button>
+        <button class="format-btn" onclick="insertFormatEdit('## ', '', '${timestamp}')">H2</button>
+        <button class="format-btn" onclick="insertFormatEdit('### ', '', '${timestamp}')">H3</button>
+        <button class="format-btn" onclick="insertFormatEdit('!image(', ')', '${timestamp}')">Image</button>
+      </div>
+      <textarea class="post-textarea" id="edit-textarea-${timestamp}">${originalContent}</textarea>
+      <button class="submit-post" onclick="saveEdit('${threadId}', '${timestamp}')">Save</button>
+      <button class="post-delete-btn" onclick="cancelEdit('${threadId}', '${timestamp}')">Cancel</button>
+    </div>
+  `;
+}
+
+function insertFormatEdit(prefix, suffix, timestamp) {
+  const textarea = document.getElementById(`edit-textarea-${timestamp}`);
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  
+  const selectedText = text.substring(start, end);
+  const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+  
+  textarea.value = newText;
+  textarea.focus();
+  textarea.selectionStart = start + prefix.length;
+  textarea.selectionEnd = end + prefix.length;
+}
+
+async function saveEdit(threadId, timestamp) {
+  const content = document.getElementById(`edit-textarea-${timestamp}`).value.trim();
   if (!content) return;
 
   await room.store.update({
@@ -986,6 +1022,15 @@ async function editPost(threadId, timestamp) {
   });
   
   loadThreadPosts(threadId);
+}
+
+async function cancelEdit(threadId, timestamp) {
+  const posts = await room.store.get(`posts-${threadId}`);
+  const post = posts.find(p => p.timestamp === timestamp);
+  if (!post) return;
+  
+  const contentDiv = document.getElementById(`post-content-${timestamp}`);
+  contentDiv.innerHTML = formatPostContent(post.content);
 }
 
 async function deletePost(threadId, timestamp) {
@@ -1013,8 +1058,6 @@ document.getElementById('submit-post').addEventListener('click', async () => {
     timestamp: new Date().toLocaleString()
   };
 
-  room.send(postData);
-
   await savePost(postData);
   
   await room.store.update({
@@ -1031,25 +1074,8 @@ document.getElementById('submit-post').addEventListener('click', async () => {
   });
 
   document.getElementById('post-content').value = '';
-  
-  addPostToList(postData);
-  updateThreadCounts();
+  loadThreadPosts(currentThread);
 });
-
-function insertFormat(prefix, suffix) {
-  const textarea = document.getElementById('post-content');
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
-  
-  const selectedText = text.substring(start, end);
-  const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
-  
-  textarea.value = newText;
-  textarea.focus();
-  textarea.selectionStart = start + prefix.length;
-  textarea.selectionEnd = end + prefix.length;
-}
 
 function startOnlineUsersInterval() {
   updateOnlineUsers();
