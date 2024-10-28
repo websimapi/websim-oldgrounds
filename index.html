@@ -973,18 +973,18 @@ async function editPost(threadId, timestamp) {
   contentDiv.innerHTML = `
     <div class="new-post-form">
       <div class="formatting-toolbar">
-        <button class="format-btn" onclick="insertFormatEdit('**', '**', '${timestamp}')">Bold</button>
-        <button class="format-btn" onclick="insertFormatEdit('*', '*', '${timestamp}')">Italic</button>
-        <button class="format-btn" onclick="insertFormatEdit('`', '`', '${timestamp}')">Code</button>
-        <button class="format-btn" onclick="insertFormatEdit('> ', '', '${timestamp}')">Quote</button>
-        <button class="format-btn" onclick="insertFormatEdit('# ', '', '${timestamp}')">H1</button>
-        <button class="format-btn" onclick="insertFormatEdit('## ', '', '${timestamp}')">H2</button>
-        <button class="format-btn" onclick="insertFormatEdit('### ', '', '${timestamp}')">H3</button>
-        <button class="format-btn" onclick="insertFormatEdit('!image(', ')', '${timestamp}')">Image</button>
+        <button class="format-btn" onclick="insertFormatEdit('**', '**', '${timestamp.replace(/'/g, "\\'")}')">Bold</button>
+        <button class="format-btn" onclick="insertFormatEdit('*', '*', '${timestamp.replace(/'/g, "\\'")}')">Italic</button>
+        <button class="format-btn" onclick="insertFormatEdit('\`', '\`', '${timestamp.replace(/'/g, "\\'")}')">Code</button>
+        <button class="format-btn" onclick="insertFormatEdit('> ', '', '${timestamp.replace(/'/g, "\\'")}')">Quote</button>
+        <button class="format-btn" onclick="insertFormatEdit('# ', '', '${timestamp.replace(/'/g, "\\'")}')">H1</button>
+        <button class="format-btn" onclick="insertFormatEdit('## ', '', '${timestamp.replace(/'/g, "\\'")}')">H2</button>
+        <button class="format-btn" onclick="insertFormatEdit('### ', '', '${timestamp.replace(/'/g, "\\'")}')">H3</button>
+        <button class="format-btn" onclick="insertFormatEdit('!image(', ')', '${timestamp.replace(/'/g, "\\'")}')">Image</button>
       </div>
-      <textarea class="post-textarea" id="edit-textarea-${timestamp}">${originalContent}</textarea>
-      <button class="submit-post" onclick="saveEdit('${threadId}', '${timestamp}')">Save</button>
-      <button class="post-delete-btn" onclick="cancelEdit('${threadId}', '${timestamp}')">Cancel</button>
+      <textarea class="post-textarea" id="edit-textarea-${timestamp}">${originalContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+      <button class="submit-post" onclick="saveEdit('${threadId.replace(/'/g, "\\'")}', '${timestamp.replace(/'/g, "\\'")}')">Save</button>
+      <button class="post-delete-btn" onclick="cancelEdit('${threadId.replace(/'/g, "\\'")}', '${timestamp.replace(/'/g, "\\'")}')">Cancel</button>
     </div>
   `;
 }
