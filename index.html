@@ -414,6 +414,27 @@
     padding: 10px;
   }
 
+  .formatting-toolbar {
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    margin-bottom: 5px;
+  }
+
+  .format-btn {
+    background: #333;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
+  .format-btn:hover {
+    background: #444;
+  }
+
   .formatting-help summary {
     cursor: pointer;
     color: #ff4400;
@@ -446,6 +467,24 @@
   }
 
   .embed-toggle:hover {
+    background: #ff6600;
+  }
+
+  .post-controls {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+  }
+
+  .post-edit-btn, .post-delete-btn {
+    background: #ff4400;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
+  .post-edit-btn:hover, .post-delete-btn:hover {
     background: #ff6600;
   }
 </style>
@@ -510,21 +549,15 @@
         <h2 class="forum-title" id="thread-title-header">Thread</h2>
       </div>
 
-      <div class="formatting-help">
-        <details>
-          <summary>Formatting Help</summary>
-          <div class="formatting-guide">
-            <p>**bold text** = <strong>bold text</strong></p>
-            <p>*italic text* = <em>italic text</em></p>
-            <p>\`code\` = <code>code</code></p>
-            <p>> quote = blockquote</p>
-            <p># Header 1</p>
-            <p>## Header 2</p>
-            <p>### Header 3</p>
-            <p>!image(URL) = embed image</p>
-            <p>URLs are automatically converted to links</p>
-          </div>
-        </details>
+      <div class="formatting-toolbar">
+        <button class="format-btn" onclick="insertFormat('**', '**')">Bold</button>
+        <button class="format-btn" onclick="insertFormat('*', '*')">Italic</button>
+        <button class="format-btn" onclick="insertFormat('`', '`')">Code</button>
+        <button class="format-btn" onclick="insertFormat('> ', '')">Quote</button>
+        <button class="format-btn" onclick="insertFormat('# ', '')">H1</button>
+        <button class="format-btn" onclick="insertFormat('## ', '')">H2</button>
+        <button class="format-btn" onclick="insertFormat('### ', '')">H3</button>
+        <button class="format-btn" onclick="insertFormat('!image(', ')')">Image</button>
       </div>
 
       <ul class="post-list" id="post-list">
@@ -881,6 +914,15 @@ function addPostToList(post) {
   const postList = document.getElementById('post-list');
   const postElement = document.createElement('li');
   postElement.className = 'forum-post';
+  
+  const isCurrentUser = post.username === room.party.client.username;
+  const postControls = isCurrentUser ? `
+    <div class="post-controls">
+      <button class="post-edit-btn" onclick="editPost('${post.threadId}', '${post.timestamp}')">Edit</button>
+      <button class="post-delete-btn" onclick="deletePost('${post.threadId}', '${post.timestamp}')">Delete</button>
+    </div>
+  ` : '';
+
   postElement.innerHTML = `
     <div class="post-header">
       <div class="post-avatar">
@@ -890,46 +932,89 @@ function addPostToList(post) {
         <div class="post-author">${post.username}</div>
         <div class="post-date">${post.timestamp}</div>
       </div>
+      ${postControls}
     </div>
-    <div class="post-content">${formatPostContent(post.content)}</div>
+    <div class="post-content" id="post-content-${post.timestamp}">${formatPostContent(post.content)}</div>
   `;
   postList.appendChild(postElement);
 }
 
-document.getElementById('submit-post').addEventListener('click', async () => {
-  const content = document.getElementById('post-content').value.trim();
-  if (!content || !currentThread) return;
-  
-  const postData = {
-    type: 'thread-post',
-    threadId: currentThread,
-    content: content,
-    username: room.party.client.username,
-    avatarUrl: room.party.client.avatarUrl,
-    timestamp: new Date().toLocaleString()
-  };
-  
+async function editPost(threadId, timestamp) {
+  const posts = await room.store.get(`posts-${threadId}`);
+  const post = posts.find(p => p.timestamp === timestamp);
+  if (!post) return;
+
+  const content = prompt('Edit your post:', post.content);
+  if (!content) return;
+
   await room.store.update({
-    id: `threads-${currentSection}`,
-    dependencies: { currentThread },
-    updateFunction: (threads = []) => {
-      return threads.map(thread => {
-        if (thread.id === currentThread) {
-          return { ...thread, lastPost: new Date().toLocaleString() };
+    id: `posts-${threadId}`,
+    dependencies: { timestamp, content },
+    updateFunction: (posts = []) => {
+      return posts.map(p => {
+        if (p.timestamp === timestamp) {
+          return { ...p, content, edited: true };
         }
-        return thread;
+        return p;
       });
     }
   });
+  
+  loadThreadPosts(threadId);
+}
 
-  await savePost(postData);
-  room.send(postData);
+async function deletePost(threadId, timestamp) {
+  if (!confirm('Are you sure you want to delete this post?')) return;
+
+  await room.store.update({
+    id: `posts-${threadId}`,
+    dependencies: { timestamp },
+    updateFunction: (posts = []) => posts.filter(p => p.timestamp !== timestamp)
+  });
   
-  document.getElementById('post-content').value = '';
+  loadThreadPosts(threadId);
+}
+
+function insertFormat(prefix, suffix) {
+  const textarea = document.getElementById('post-content');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
   
-  await loadThreadPosts(currentThread);
-  updateThreadCounts();
-});
+  const selectedText = text.substring(start, end);
+  const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+  
+  textarea.value = newText;
+  textarea.focus();
+  textarea.selectionStart = start + prefix.length;
+  textarea.selectionEnd = end + prefix.length;
+}
+
+function startOnlineUsersInterval() {
+  updateOnlineUsers();
+  setInterval(updateOnlineUsers, 15000);
+}
+
+function updateOnlineUsers() {
+  const usersList = document.getElementById('online-users-list');
+  if (!usersList) return;
+
+  const users = room.party?.peers || {};
+  const uniqueUsers = Object.values(users).filter((user, index, self) =>
+    index === self.findIndex(u => u.username === user.username)
+  );
+  
+  const onlineCount = uniqueUsers.length;
+  
+  usersList.innerHTML = onlineCount === 0 ? 
+    '<span class="user-tag">No users online</span>' : 
+    uniqueUsers.map(peer => `
+      <span class="user-tag">
+        <img src="${peer.avatarUrl}" alt="User avatar" class="user-avatar" width="16" height="16">
+        ${peer.username}
+      </span>
+    `).join(' ');
+}
 
 room.onmessage = async (event) => {
   const data = event.data;
@@ -947,36 +1032,6 @@ async function savePost(postData) {
     updateFunction: (posts = []) => [...posts, postData]
   });
 }
-
-function startOnlineUsersInterval() {
-  updateOnlineUsers();
-  setInterval(updateOnlineUsers, 15000);
-}
-
-function updateOnlineUsers() {
-  const usersList = document.getElementById('online-users-list');
-  if (!usersList) return;
-
-  const users = room.party?.peers || {};
-  const onlineCount = Object.keys(users).length;
-  
-  usersList.innerHTML = onlineCount === 0 ? 
-    '<span class="user-tag">No users online</span>' : 
-    Object.entries(users)
-      .map(([clientId, peer]) => `
-        <span class="user-tag">
-          <img src="${peer.avatarUrl}" alt="User avatar" class="user-avatar" width="16" height="16">
-          ${peer.username}
-        </span>
-      `).join(' ');
-}
-
-room.onmessage = (event) => {
-  const data = event.data;
-  if (data.type === "thread-post" && data.threadId === currentThread) {
-    addPostToList(data);
-  }
-};
 
 document.addEventListener('DOMContentLoaded', () => {
   updateForumSections();
