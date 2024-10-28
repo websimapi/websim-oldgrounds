@@ -1,4 +1,4 @@
-<html><head><base href="." target="_blank">
+<html><head><base href=".">
 <meta charset="UTF-8">
 <title>OldGrounds Forums - The best of Web 1.0</title>
 <style>
@@ -610,66 +610,35 @@ async function savePost(postData) {
   });
 }
 
-room.onmessage = (event) => {
-  const data = event.data;
-  switch (data.type) {
-    case "connected":
-    case "disconnected":
-      updateOnlineUsers();
-      break;
-    case "thread-post":
-      if (data.threadId === currentThread) {
-        addPostToList(data);
-      }
-      break;
-  }
-};
+function startOnlineUsersInterval() {
+  updateOnlineUsers();
+  setInterval(updateOnlineUsers, 15000);
+}
 
 function updateOnlineUsers() {
   const usersList = document.getElementById('online-users-list');
-  usersList.innerHTML = '';
+  if (!usersList) return;
+
+  const users = room.party?.peers || {};
+  const onlineCount = Object.keys(users).length;
   
-  Object.entries(room.party.peers).forEach(([clientId, peer]) => {
-    const userTag = document.createElement('span');
-    userTag.className = 'user-tag';
-    userTag.textContent = peer.username;
-    usersList.appendChild(userTag);
-  });
+  usersList.innerHTML = onlineCount === 0 ? 
+    '<span class="user-tag">No users online</span>' : 
+    Object.entries(users)
+      .map(([clientId, peer]) => `<span class="user-tag">${peer.username}</span>`)
+      .join(' ');
 }
 
-function addPostToList(postData) {
-  const postList = document.getElementById('post-list');
-  const postElement = document.createElement('li');
-  postElement.className = 'forum-post';
-  
-  postElement.innerHTML = `
-    <div class="post-header">
-      <div class="post-avatar">
-        <img src="${postData.avatarUrl}" width="50" height="50" alt="User avatar">
-      </div>
-      <div class="post-info">
-        <div class="post-author">${postData.username}</div>
-        <div class="post-date">${postData.timestamp || new Date().toLocaleString()}</div>
-      </div>
-    </div>
-    <div class="post-content">${postData.content}</div>
-  `;
-  
-  postList.appendChild(postElement);
-  postList.scrollTop = postList.scrollHeight;
-}
-
-async function loadExistingPosts() {
-  try {
-    const posts = await room.store.get('forum-posts') || [];
-    posts.forEach(post => addPostToList(post));
-  } catch (error) {
-    console.error('Error loading posts:', error);
+room.onmessage = (event) => {
+  const data = event.data;
+  if (data.type === "thread-post" && data.threadId === currentThread) {
+    addPostToList(data);
   }
-}
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   showForumSections();
+  startOnlineUsersInterval();
 });
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
