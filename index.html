@@ -427,6 +427,27 @@
   .formatting-guide p {
     margin: 5px 0;
   }
+
+  .websim-embed {
+    margin: 10px 0;
+    padding: 10px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+  }
+
+  .embed-toggle {
+    display: block;
+    margin: 5px 0;
+    padding: 5px 10px;
+    background: #ff4400;
+    border: none;
+    color: white;
+    cursor: pointer;
+  }
+
+  .embed-toggle:hover {
+    background: #ff6600;
+  }
 </style>
 </head>
 <body>
@@ -609,7 +630,18 @@ function isThreadSeen(threadId, lastPostDate) {
 
 function formatPostContent(content) {
   content = content.replace(
-    /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g, 
+    /(https:\/\/websim\.ai\/[^\s<]+[^<.,:;"')\]\s])/g,
+    (match) => `
+      <div class="websim-embed">
+        <a href="${match}" target="_blank" rel="noopener noreferrer">${match}</a>
+        <button class="embed-toggle" onclick="toggleEmbed(this)">Show Embed</button>
+        <iframe src="${match}" style="display:none;width:100%;height:600px;border:0;" loading="lazy"></iframe>
+      </div>
+    `
+  );
+  
+  content = content.replace(
+    /(https?:\/\/(?!websim\.ai)[^\s<]+[^<.,:;"')\]\s])/g, 
     '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
   );
   
@@ -628,6 +660,17 @@ function formatPostContent(content) {
     .replace(/^# (.+)/gm, '<h2>$1</h2>');
 
   return content;
+}
+
+function toggleEmbed(button) {
+  const iframe = button.nextElementSibling;
+  if (iframe.style.display === 'none') {
+    iframe.style.display = 'block';
+    button.textContent = 'Hide Embed';
+  } else {
+    iframe.style.display = 'none';
+    button.textContent = 'Show Embed';
+  }
 }
 
 function updateForumSections() {
