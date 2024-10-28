@@ -274,7 +274,20 @@
   .section-content {
     flex-grow: 1;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .section-description {
+    color: #999;
+    font-size: 11px;
+  }
+
+  .section-stats {
+    display: flex;
+    gap: 15px;
+    color: #666;
+    font-size: 12px;
   }
 
   .thread-list {
@@ -386,50 +399,6 @@
       </div>
       
       <ul class="forum-sections" id="forum-sections">
-        <li class="forum-section" onclick="showSection('general')">
-          <div class="section-header">
-            <div class="section-icon">
-              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
-            </div>
-            <div class="section-content">
-              <div class="section-title">General Discussion</div>
-              <div class="section-stats">Threads: <span id="general-count">0</span></div>
-            </div>
-          </div>
-        </li>
-        <li class="forum-section" onclick="showSection('games')">
-          <div class="section-header">
-            <div class="section-icon">
-              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
-            </div>
-            <div class="section-content">
-              <div class="section-title">Game Development</div>
-              <div class="section-stats">Threads: <span id="games-count">0</span></div>
-            </div>
-          </div>
-        </li>
-        <li class="forum-section" onclick="showSection('art')">
-          <div class="section-header">
-            <div class="section-icon">
-              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
-            </div>
-            <div class="section-content">
-              <div class="section-title">Art & Animation</div>
-              <div class="section-stats">Threads: <span id="art-count">0</span></div>
-            </div>
-          </div>
-        </li>
-        <li class="forum-section" onclick="showSection('help')">
-          <div class="section-header">
-            <div class="section-icon">
-              <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
-            </div>
-            <div class="section-content">
-              <div class="section-title">Help & Support</div>
-              <div class="section-stats">Threads: <span id="help-count">0</span></div>
-            </div>
-          </div>
-        </li>
       </ul>
     </div>
 
@@ -478,6 +447,47 @@
 const room = new WebsimSocket();
 let currentSection = '';
 let currentThread = '';
+
+function updateForumSections() {
+  const sectionsData = {
+    general: {
+      title: "General Discussion",
+      description: "Talk about anything and everything OldGrounds related"
+    },
+    games: {
+      title: "Game Development",
+      description: "Share and discuss your Flash games and game development"
+    },
+    art: {
+      title: "Art & Animation",
+      description: "Share your artwork and animations with the community"
+    },
+    help: {
+      title: "Help & Support",
+      description: "Get help with technical issues and site features"
+    }
+  };
+
+  const sectionsList = document.getElementById('forum-sections');
+  sectionsList.innerHTML = Object.entries(sectionsData).map(([id, data]) => `
+    <li class="forum-section" onclick="showSection('${id}')">
+      <div class="section-header">
+        <div class="section-icon">
+          <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="Forum section icon" width="32" height="32">
+        </div>
+        <div class="section-content">
+          <div class="section-title">${data.title}</div>
+          <div class="section-description">${data.description}</div>
+          <div class="section-stats">
+            <span>Topics: <span id="${id}-count">0</span></span>
+            <span>Replies: <span id="${id}-replies">0</span></span>
+            <span>Last Post: <span id="${id}-lastpost">Never</span></span>
+          </div>
+        </div>
+      </div>
+    </li>
+  `).join('');
+}
 
 function showSection(sectionId) {
   currentSection = sectionId;
@@ -590,9 +600,31 @@ async function loadThreads(sectionId) {
 
 async function updateThreadCounts() {
   const sections = ['general', 'games', 'art', 'help'];
+  
   for (const section of sections) {
     const threads = await room.store.get(`threads-${section}`) || [];
-    document.getElementById(`${section}-count`).textContent = threads.length;
+    const threadCount = threads.length;
+    
+    let totalReplies = 0;
+    let lastPostDate = null;
+    
+    for (const thread of threads) {
+      const posts = await room.store.get(`posts-${thread.id}`) || [];
+      totalReplies += posts.length;
+      
+      const threadLastPost = posts.length > 0 
+        ? new Date(posts[posts.length - 1].timestamp)
+        : new Date(thread.timestamp);
+        
+      if (!lastPostDate || threadLastPost > lastPostDate) {
+        lastPostDate = threadLastPost;
+      }
+    }
+
+    document.getElementById(`${section}-count`).textContent = threadCount;
+    document.getElementById(`${section}-replies`).textContent = totalReplies;
+    document.getElementById(`${section}-lastpost`).textContent = 
+      lastPostDate ? lastPostDate.toLocaleDateString() : 'Never';
   }
 }
 
@@ -678,6 +710,7 @@ room.onmessage = (event) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  updateForumSections();
   showForumSections();
   startOnlineUsersInterval();
 });
