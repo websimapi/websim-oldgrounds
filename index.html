@@ -645,6 +645,25 @@ async function loadThreadPosts(threadId) {
   document.getElementById('thread-back-button').onclick = () => showSection(currentSection);
 }
 
+function addPostToList(post) {
+  const postList = document.getElementById('post-list');
+  const postElement = document.createElement('li');
+  postElement.className = 'forum-post';
+  postElement.innerHTML = `
+    <div class="post-header">
+      <div class="post-avatar">
+        <img src="/a/39d37899-d576-447a-9bfb-187f44df039c" alt="User avatar" width="50" height="50">
+      </div>
+      <div class="post-info">
+        <div class="post-author">${post.username}</div>
+        <div class="post-date">${post.timestamp}</div>
+      </div>
+    </div>
+    <div class="post-content">${post.content}</div>
+  `;
+  postList.appendChild(postElement);
+}
+
 document.getElementById('submit-post').addEventListener('click', async () => {
   const content = document.getElementById('post-content').value.trim();
   if (!content || !currentThread) return;
