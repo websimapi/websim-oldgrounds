@@ -249,11 +249,11 @@
 
   <div class="navigation">
     <ul class="nav-list">
-      <li><a href="https://oldgrounds.com/games">GAMES</a></li>
-      <li><a href="https://oldgrounds.com/movies">MOVIES</a></li>
-      <li><a href="https://oldgrounds.com/audio">AUDIO</a></li>
-      <li><a href="https://oldgrounds.com/art">ART</a></li>
-      <li><a href="https://oldgrounds.com/forums">FORUMS</a></li>
+      <li><span style="cursor:pointer" onclick="switchSection('games')">GAMES</span></li>
+      <li><span style="cursor:pointer" onclick="switchSection('movies')">MOVIES</span></li>
+      <li><span style="cursor:pointer" onclick="switchSection('audio')">AUDIO</span></li>
+      <li><span style="cursor:pointer" onclick="switchSection('art')">ART</span></li>
+      <li><span style="cursor:pointer" onclick="switchSection('forums')">FORUMS</span></li>
     </ul>
   </div>
 
@@ -286,19 +286,22 @@
 
 <script>
 const room = new WebsimSocket();
-let currentUser = null;
+
+function switchSection(section) {
+  console.log(`Switching to ${section} section`);
+  // Future section handling
+}
 
 room.onmessage = (event) => {
   const data = event.data;
   switch (data.type) {
     case "connected":
-      updateOnlineUsers();
-      break;
     case "disconnected":
       updateOnlineUsers();
       break;
     case "forum-post":
       addPostToList(data);
+      savePost(data);
       break;
   }
 };
@@ -324,8 +327,6 @@ function addPostToList(postData) {
   const postElement = document.createElement('li');
   postElement.className = 'forum-post';
   
-  const timestamp = new Date().toLocaleTimeString();
-  
   postElement.innerHTML = `
     <div class="post-header">
       <div class="post-avatar">
@@ -333,7 +334,7 @@ function addPostToList(postData) {
       </div>
       <div class="post-info">
         <div class="post-author">${postData.username}</div>
-        <div class="post-date">${timestamp}</div>
+        <div class="post-date">${postData.timestamp || new Date().toLocaleString()}</div>
       </div>
     </div>
     <div class="post-content">${postData.content}</div>
@@ -343,39 +344,47 @@ function addPostToList(postData) {
   postList.scrollTop = postList.scrollHeight;
 }
 
+async function savePost(postData) {
+  const post = {
+    ...postData,
+    timestamp: new Date().toLocaleString()
+  };
+
+  await room.store.update({
+    id: 'forum-posts',
+    dependencies: { post },
+    updateFunction: (posts = []) => [...posts, post]
+  });
+}
+
 document.getElementById('submit-post').addEventListener('click', () => {
   const content = document.getElementById('post-content').value.trim();
   if (!content) return;
   
-  room.send({
+  const postData = {
     type: 'forum-post',
     content: content,
     username: room.party.client.username,
-    avatarUrl: room.party.client.avatarUrl
-  });
+    avatarUrl: room.party.client.avatarUrl,
+    timestamp: new Date().toLocaleString()
+  };
   
+  room.send(postData);
   document.getElementById('post-content').value = '';
 });
 
-// Load existing posts from store
 async function loadExistingPosts() {
-  const posts = await room.store.get('forum-posts') || [];
-  posts.forEach(post => addPostToList(post));
+  try {
+    const posts = await room.store.get('forum-posts') || [];
+    posts.forEach(post => addPostToList(post));
+  } catch (error) {
+    console.error('Error loading posts:', error);
+  }
 }
 
-// Save new posts to store
-room.onmessage = async (event) => {
-  const data = event.data;
-  if (data.type === 'forum-post') {
-    await room.store.update({
-      id: 'forum-posts',
-      dependencies: { post: data },
-      updateFunction: (posts = []) => [...posts, post]
-    });
-  }
-};
-
-loadExistingPosts();
+document.addEventListener('DOMContentLoaded', () => {
+  loadExistingPosts();
+});
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body></html>
