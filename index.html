@@ -891,28 +891,42 @@ async function updateThreadCounts() {
   const sections = ['general', 'games', 'art', 'help'];
   
   for (const section of sections) {
-    const threads = await room.store.get(`threads-${section}`) || [];
+    let threads = await room.store.get(`threads-${section}`);
+    if (!Array.isArray(threads)) threads = [];
+    
     const threadCount = threads.length;
     
     let totalReplies = 0;
     let lastPostDate = null;
     
     for (const thread of threads) {
-      const posts = await room.store.get(`posts-${thread.id}`) || [];
+      if (!thread || !thread.id) continue;
+
+      let posts = await room.store.get(`posts-${thread.id}`);
+      if (!Array.isArray(posts)) posts = [];
+      
       totalReplies += posts.length;
       
-      const threadLastPost = posts.length > 0 
-        ? new Date(posts[posts.length - 1].timestamp)
-        : new Date(thread.timestamp);
+      const lastPostTimestamp = posts.length > 0 && posts[posts.length - 1]
+        ? posts[posts.length - 1].timestamp 
+        : thread.timestamp;
         
-      if (!lastPostDate || threadLastPost > lastPostDate) {
-        lastPostDate = threadLastPost;
+      const threadLastPost = new Date(lastPostTimestamp);
+        
+      if (!isNaN(threadLastPost.getTime())) {
+        if (!lastPostDate || threadLastPost > lastPostDate) {
+          lastPostDate = threadLastPost;
+        }
       }
     }
 
-    document.getElementById(`${section}-count`).textContent = threadCount;
-    document.getElementById(`${section}-replies`).textContent = totalReplies;
-    document.getElementById(`${section}-lastpost`).textContent = 
+    const countEl = document.getElementById(`${section}-count`);
+    const repliesEl = document.getElementById(`${section}-replies`);
+    const lastPostEl = document.getElementById(`${section}-lastpost`);
+
+    if (countEl) countEl.textContent = threadCount;
+    if (repliesEl) repliesEl.textContent = totalReplies;
+    if (lastPostEl) lastPostEl.textContent = 
       lastPostDate ? lastPostDate.toLocaleDateString() : 'Never';
   }
 }
@@ -1063,9 +1077,12 @@ document.getElementById('submit-post').addEventListener('click', async () => {
   await room.store.update({
     id: `threads-${currentSection}`,
     dependencies: { threadId: currentThread },
-    updateFunction: (threads = []) => {
+    updateFunction: (threads = [], deps) => {
+      const targetId = deps && deps.threadId ? deps.threadId : null;
+      if (!targetId) return threads;
+      
       return threads.map(t => {
-        if (t.id === threadId) {
+        if (t.id === targetId) {
           return { ...t, lastPost: new Date().toLocaleString() };
         }
         return t;
